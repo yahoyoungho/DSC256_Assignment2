@@ -1,0 +1,100 @@
+{
+  "audit": {
+    "application_types": {
+      "game": 150279,
+      "dlc": 53792,
+      "demo": 23521,
+      "music": 8713,
+      "video": 692
+    },
+    "raw_genre_links": 587515,
+    "normalized_game_genre_links": 380751,
+    "games_with_usable_genres": 140735,
+    "raw_reviews": 1048148,
+    "raw_users": 701884,
+    "raw_user_review_quantiles": {
+      "0.0": 1.0,
+      "0.5": 1.0,
+      "0.75": 1.0,
+      "0.9": 2.0,
+      "0.95": 3.0,
+      "0.99": 8.0,
+      "1.0": 2392.0
+    },
+    "invalid_required_fields_removed": 0,
+    "edited_reviews": 142383,
+    "duplicate_review_ids_removed": 0,
+    "duplicate_user_game_pairs_removed": 8,
+    "unmatched_application_reviews_removed": 0,
+    "non_game_reviews_removed": 182366,
+    "missing_usable_genre_reviews_removed": 11125,
+    "negative_reviews_excluded": 203912,
+    "clean_positive_reviews": 650737,
+    "clean_positive_users": 469636,
+    "clean_reviewed_games": 73197
+  },
+  "split_counts": {
+    "train": 455515,
+    "validation": 97611,
+    "test": 97611
+  },
+  "validation_start_utc": "2025-08-13T22:25:32+00:00",
+  "test_start_utc": "2025-08-24T11:03:06+00:00",
+  "event_time_min_utc": "2010-11-19T17:15:28+00:00",
+  "event_time_max_utc": "2025-09-06T14:37:00+00:00",
+  "selected_model": "personal_mode",
+  "alpha": 0,
+  "evaluation_global_mode": "Indie",
+  "test_lift": {
+    "mean_lift": 0.008950915549514334,
+    "ci_95_low": 0.007787727511191847,
+    "ci_95_high": 0.010080928791850626,
+    "samples": 1000,
+    "seed": 2026
+  },
+  "source_files": {
+    "application_developers.csv": {
+      "bytes": 3429914
+    },
+    "application_publishers.csv": {
+      "bytes": 3045252
+    },
+    "categories.csv": {
+      "bytes": 12737
+    },
+    "applications.csv": {
+      "bytes": 180081169
+    },
+    "reviews.csv": {
+      "bytes": 669812331
+    },
+    "application_genres.csv": {
+      "bytes": 6514863
+    },
+    "application_platforms.csv": {
+      "bytes": 3263312
+    },
+    "genres.csv": {
+      "bytes": 2447
+    },
+    "platforms.csv": {
+      "bytes": 32
+    },
+    "developers.csv": {
+      "bytes": 2061915
+    },
+    "publishers.csv": {
+      "bytes": 1762367
+    },
+    "application_categories.csv": {
+      "bytes": 12410571
+    }
+  },
+  "manifest_sha256": "3bb610251b4a681ea8b4675ebbc93b66ced0dd4c29d13a773b75f45db95c54a1",
+  "versions": {
+    "numpy": "2.4.3",
+    "pandas": "2.3.3"
+  },
+  "recommendation_users": 701884,
+  "recommendation_cold_users": 232248
+}
