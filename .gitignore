@@ -225,6 +225,12 @@ __marimo__/
 # Large local datasets (exceed GitHub 100 MB limit)
 ratebeer.json.gz
 
+<<<<<<< HEAD
 cursor_notes/
 
 data/
+=======
+158 _ 258 2026 Assignment 2.pdf
+archive.zip
+steam_dataset_2025_csv/
+>>>>>>> e1e4e7dc9b07892337e927eff271737e6dba9b80
