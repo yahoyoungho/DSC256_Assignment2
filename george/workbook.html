@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>George — Steam genre recommendation</title><style>body{max-width:1100px;margin:48px auto;padding:0 24px;color:#20232a;font:16px/1.6 system-ui,sans-serif}
+    h1,h2,h3{line-height:1.2}h2{margin-top:48px}table{border-collapse:collapse;font-size:14px;width:100%;margin:20px 0}
+    th,td{text-align:left;padding:9px;border-bottom:1px solid #ddd}th{background:#f2f4f6}pre{padding:16px;background:#f4f5f6;overflow:auto;font-size:13px}
+    .table-wrap{overflow:auto}details{margin-top:20px}summary{cursor:pointer;color:#245684}a{color:#245684}code{font-size:.9em}</style></head><body><h1>Steam genre recommendation — George's first experiment</h1>
+<p>Meetup preparation: model choice, independent data cleanup and analysis,
+global-mode baseline, and a chronological holdout. This is an executed prototype
+report, not the completed group presentation or final related-work survey.</p>
+<h2>1. Predictive task and model decision</h2>
+<p>Given a user's past positive game reviews, recommend one Steam genre. A future
+positive review supplies a set of acceptable genre labels. Success means the
+recommendation belongs to that set. We do not observe a user's true favorite genre,
+and we are not predicting the genre of a supplied target game.</p>
+<p>Before modeling, inspection found 1,048,148 reviews and 701,884 authors; at least
+75% of authors have only one review. A content-based genre-frequency profile is a
+suitable initial family because it can work with a single prior interaction and
+supports a transparent global fallback. We compare its unsmoothed and smoothed
+variants rather than assuming a more complex model will win.</p>
+<table><tr><th>Model family</th><th>Decision before evaluation</th></tr>
+<tr><td>Global genre mode</td><td>Required baseline, cold-start fallback.</td></tr>
+<tr><td>Personal genre mode / smoothed profile</td><td>Primary candidates; small vocabulary, interpretable preferences.</td></tr>
+<tr><td>Collaborative filtering / factorization</td><td>Useful future benchmark; very sparse user histories are a challenge. Not empirically ruled out.</td></tr>
+<tr><td>Text or neural model</td><td>Not justified as a first step. Target-review text would leak information unavailable at recommendation time.</td></tr></table>
+<p>“Best” below means best validation performance among the six tested configurations,
+not best among all recommender systems.</p>
+<details><summary>Code cell 1</summary><pre>from pathlib import Path
+import json, sys
+import numpy as np
+import pandas as pd
+ROOT = Path.cwd() if (Path.cwd() / &#x27;pipeline.py&#x27;).exists() else Path.cwd() / &#x27;george&#x27;
+ROOT = ROOT.resolve()
+sys.path.insert(0, str(ROOT))
+from model import GenreRecommender
+from pipeline import main
+OUT = ROOT / &#x27;outputs&#x27;
+# Reuse the pipeline results; if absent, reproduce them from the local CSVs.
+# To refresh after source/code changes: python3 george/pipeline.py
+if not (OUT / &#x27;summary.json&#x27;).exists():
+    main(ROOT.parent / &#x27;steam_dataset_2025_csv&#x27;, OUT)
+summary = json.loads((OUT / &#x27;summary.json&#x27;).read_text())
+def table(frame):
+    display_html(frame.to_html(index=False, border=0, float_format=lambda x: f&#x27;{x:.6f}&#x27;))
+print(&#x27;Recorded package versions:&#x27;, summary[&#x27;versions&#x27;])
+print(&#x27;Selected model:&#x27;, summary[&#x27;selected_model&#x27;], &#x27;| alpha:&#x27;, summary[&#x27;alpha&#x27;])</pre></details>
+<pre>Recorded package versions: {&#x27;numpy&#x27;: &#x27;2.4.3&#x27;, &#x27;pandas&#x27;: &#x27;2.3.3&#x27;}
+Selected model: personal_mode | alpha: 0
+</pre>
+<h2>2. Data and cleanup</h2>
+<p>Sources: local <code>steam_dataset_2025_csv</code> applications, reviews,
+application_genres and genres tables. The manifest describes table sizes but does
+not establish the upstream source, sampling method or license. Confirm these with
+the team. Authors embedded in reviews are the available user data; there is no
+separate complete user library table.</p>
+<p>Steam IDs stay strings. Validate required identifiers, votes and times; deduplicate
+review IDs and user–game pairs, retaining the latest available state. Restrict to
+games with usable genre labels, then positive votes. Merge translated genre labels
+into ten canonical labels and deduplicate game–genre pairs. Exclude business models,
+release statuses, content descriptors, and software/video categories. Retain Indie
+as a Steam catalog genre; the team should discuss whether that target is useful.</p>
+<p>The following removal counts are sequential, so a negative DLC review is counted
+under non-game removal rather than again as a negative review.</p>
+<details><summary>Code cell 2</summary><pre>audit = summary[&#x27;audit&#x27;]
+scalar_audit = [{&#x27;measure&#x27;: k, &#x27;count&#x27;: v} for k, v in audit.items() if not isinstance(v, dict)]
+table(pd.DataFrame(scalar_audit))
+table(pd.DataFrame(list(audit[&#x27;raw_user_review_quantiles&#x27;].items()), columns=[&#x27;quantile&#x27;, &#x27;reviews_per_user&#x27;]))
+print(&#x27;Application types:&#x27;, audit[&#x27;application_types&#x27;])</pre></details>
+<div class="table-wrap"><table class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>measure</th>
+      <th>count</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>raw_genre_links</td>
+      <td>587515</td>
+    </tr>
+    <tr>
+      <td>normalized_game_genre_links</td>
+      <td>380751</td>
+    </tr>
+    <tr>
+      <td>games_with_usable_genres</td>
+      <td>140735</td>
+    </tr>
+    <tr>
+      <td>raw_reviews</td>
+      <td>1048148</td>
+    </tr>
+    <tr>
+      <td>raw_users</td>
+      <td>701884</td>
+    </tr>
+    <tr>
+      <td>invalid_required_fields_removed</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td>edited_reviews</td>
+      <td>142383</td>
+    </tr>
+    <tr>
+      <td>duplicate_review_ids_removed</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td>duplicate_user_game_pairs_removed</td>
+      <td>8</td>
+    </tr>
+    <tr>
+      <td>unmatched_application_reviews_removed</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td>non_game_reviews_removed</td>
+      <td>182366</td>
+    </tr>
+    <tr>
+      <td>missing_usable_genre_reviews_removed</td>
+      <td>11125</td>
+    </tr>
+    <tr>
+      <td>negative_reviews_excluded</td>
+      <td>203912</td>
+    </tr>
+    <tr>
+      <td>clean_positive_reviews</td>
+      <td>650737</td>
+    </tr>
+    <tr>
+      <td>clean_positive_users</td>
+      <td>469636</td>
+    </tr>
+    <tr>
+      <td>clean_reviewed_games</td>
+      <td>73197</td>
+    </tr>
+  </tbody>
+</table></div>
+<div class="table-wrap"><table class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>quantile</th>
+      <th>reviews_per_user</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>0.0</td>
+      <td>1.000000</td>
+    </tr>
+    <tr>
+      <td>0.5</td>
+      <td>1.000000</td>
+    </tr>
+    <tr>
+      <td>0.75</td>
+      <td>1.000000</td>
+    </tr>
+    <tr>
+      <td>0.9</td>
+      <td>2.000000</td>
+    </tr>
+    <tr>
+      <td>0.95</td>
+      <td>3.000000</td>
+    </tr>
+    <tr>
+      <td>0.99</td>
+      <td>8.000000</td>
+    </tr>
+    <tr>
+      <td>1.0</td>
+      <td>2392.000000</td>
+    </tr>
+  </tbody>
+</table></div>
+<pre>Application types: {&#x27;game&#x27;: 150279, &#x27;dlc&#x27;: 53792, &#x27;demo&#x27;: 23521, &#x27;music&#x27;: 8713, &#x27;video&#x27;: 692}
+</pre>
+<details><summary>Code cell 3</summary><pre>mapping = pd.read_csv(OUT / &#x27;genre_mapping.csv&#x27;)
+table(mapping.groupby(&#x27;canonical_genre&#x27;).size().rename(&#x27;source_labels&#x27;).reset_index())
+print(&#x27;Excluded source labels:&#x27;, int(mapping.canonical_genre.isna().sum()))
+genre_distribution = pd.read_csv(OUT / &#x27;train_genre_distribution.csv&#x27;)
+table(genre_distribution)</pre></details>
+<div class="table-wrap"><table class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>canonical_genre</th>
+      <th>source_labels</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Action</td>
+      <td>16</td>
+    </tr>
+    <tr>
+      <td>Adventure</td>
+      <td>17</td>
+    </tr>
+    <tr>
+      <td>Casual</td>
+      <td>10</td>
+    </tr>
+    <tr>
+      <td>Indie</td>
+      <td>11</td>
+    </tr>
+    <tr>
+      <td>Massively Multiplayer</td>
+      <td>8</td>
+    </tr>
+    <tr>
+      <td>RPG</td>
+      <td>8</td>
+    </tr>
+    <tr>
+      <td>Racing</td>
+      <td>7</td>
+    </tr>
+    <tr>
+      <td>Simulation</td>
+      <td>19</td>
+    </tr>
+    <tr>
+      <td>Sports</td>
+      <td>9</td>
+    </tr>
+    <tr>
+      <td>Strategy</td>
+      <td>14</td>
+    </tr>
+  </tbody>
+</table></div>
+<pre>Excluded source labels: 35
+</pre>
+<div class="table-wrap"><table class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>genre</th>
+      <th>positive_review_votes</th>
+      <th>membership_rate</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Indie</td>
+      <td>335573</td>
+      <td>0.736689</td>
+    </tr>
+    <tr>
+      <td>Action</td>
+      <td>201258</td>
+      <td>0.441825</td>
+    </tr>
+    <tr>
+      <td>Adventure</td>
+      <td>190680</td>
+      <td>0.418603</td>
+    </tr>
+    <tr>
+      <td>Casual</td>
+      <td>182607</td>
+      <td>0.400880</td>
+    </tr>
+    <tr>
+      <td>Simulation</td>
+      <td>102038</td>
+      <td>0.224006</td>
+    </tr>
+    <tr>
+      <td>Strategy</td>
+      <td>93031</td>
+      <td>0.204233</td>
+    </tr>
+    <tr>
+      <td>RPG</td>
+      <td>91752</td>
+      <td>0.201425</td>
+    </tr>
+    <tr>
+      <td>Sports</td>
+      <td>25351</td>
+      <td>0.055653</td>
+    </tr>
+    <tr>
+      <td>Racing</td>
+      <td>17411</td>
+      <td>0.038223</td>
+    </tr>
+    <tr>
+      <td>Massively Multiplayer</td>
+      <td>11441</td>
+      <td>0.025117</td>
+    </tr>
+  </tbody>
+</table></div>
+<p>The training table counts positive interaction–genre memberships, not catalog
+titles. Multi-genre games count once toward each distinct genre, so membership
+rates can sum above 100%. Broad categories can dominate this target.</p>
+<h2>3. Model formulation and implementation</h2>
+<p>Let c(u,g) count the user's positive reviews whose games have genre g, n(u)
+count their positive reviews, and p(g) be the corresponding global membership rate.
+Score g by <code>(c(u,g) + alpha * p(g)) / (n(u) + alpha)</code> and select the
+largest score. An unseen user gets p(g). These are membership-rate estimates,
+not a probability distribution over mutually exclusive classes.</p>
+<p>Alpha=0 is personal mode. The global-only baseline always picks the most frequent
+training genre. Ties use global frequency, then alphabetical order. Validation
+maximizes user-averaged Hit@1 over the fixed grid; ties prefer the simpler candidate.
+Count aggregation costs O(number of interaction–genre memberships), with O(users ×
+genres) profile storage and scoring. This is small compared with learning one
+embedding per game and user, though it cannot discover preferences absent from
+the selected genre representation.</p>
+<details><summary>Code cell 4</summary><pre>import inspect
+print(inspect.getsource(GenreRecommender.fit))
+print(inspect.getsource(GenreRecommender.predict))</pre></details>
+<pre>    def fit(self, interactions, game_genres):
+        if interactions.empty:
+            raise ValueError(&#x27;Cannot fit without positive training reviews&#x27;)
+        self.genres = sorted(game_genres.genre.unique())
+        expanded = interactions[[&#x27;author_steamid&#x27;, &#x27;appid&#x27;]].merge(game_genres, on=&#x27;appid&#x27;)
+        self.global_counts = expanded.genre.value_counts().reindex(self.genres, fill_value=0)
+        self.prior = self.global_counts.to_numpy(dtype=float) / len(interactions)
+        self.counts = pd.crosstab(expanded.author_steamid, expanded.genre).reindex(columns=self.genres, fill_value=0)
+        self.history = interactions.groupby(&#x27;author_steamid&#x27;).size()
+        self.tie_order = np.argsort(-self.prior, kind=&#x27;stable&#x27;)
+        self.global_mode = self.genres[self.tie_order[0]]
+        return self
+
+    def predict(self, users):
+        users = pd.Index(users, dtype=&#x27;string&#x27;)
+        n = self.history.reindex(users, fill_value=0).to_numpy(dtype=float)
+        if self.global_only:
+            scores = np.broadcast_to(self.prior, (len(users), len(self.genres)))
+        else:
+            counts = self.counts.reindex(users, fill_value=0).to_numpy(dtype=float)
+            denom = n + self.alpha
+            scores = np.divide(counts + self.alpha * self.prior, denom[:, None],
+                               out=np.broadcast_to(self.prior, counts.shape).copy(),
+                               where=denom[:, None] &gt; 0)
+        best = self.tie_order[np.argmax(scores[:, self.tie_order], axis=1)]
+        return pd.DataFrame({&#x27;author_steamid&#x27;: users,
+                             &#x27;recommended_genre&#x27;: np.asarray(self.genres)[best],
+                             &#x27;history_count&#x27;: n.astype(int),
+                             &#x27;score&#x27;: scores[np.arange(len(users)), best]})
+
+</pre>
+<h2>4. Holdout protocol and results</h2>
+<p>Sort by <code>max(timestamp_created, timestamp_updated)</code> and use global
+70/15/15 chronological partitions, keeping timestamp ties together. Last-update time
+is used because the stored review vote may have changed after creation. This tests
+later available positive review states, not strictly first-time purchases.</p>
+<p>Choose the model using training and validation only; refit its selected
+configuration on train + validation and evaluate the test period with frozen
+histories. A warm user has positive history in the fitted partition. Cold users are
+included rather than silently removed. Training genre metadata is a present-day
+snapshot, so historical taxonomy changes remain an unresolved limitation.</p>
+<p>Primary metric: average the binary genre hit across reviews within each user,
+then across users. This gives every evaluated user equal weight. Also show
+review-weighted hits and warm/cold cohorts. This is multi-label Hit@1, not
+single-label classification accuracy, recall of all interests, or causal evidence
+that a recommendation improves satisfaction.</p>
+<details><summary>Code cell 5</summary><pre>table(pd.DataFrame(list(summary[&#x27;split_counts&#x27;].items()), columns=[&#x27;partition&#x27;, &#x27;positive_reviews&#x27;]))
+for key in [&#x27;event_time_min_utc&#x27;, &#x27;validation_start_utc&#x27;, &#x27;test_start_utc&#x27;, &#x27;event_time_max_utc&#x27;]:
+    print(key, summary[key])
+validation = pd.read_csv(OUT / &#x27;validation_metrics.csv&#x27;)
+table(validation[[&#x27;model&#x27;, &#x27;alpha&#x27;, &#x27;all_user_hit_at_1&#x27;, &#x27;warm_user_hit_at_1&#x27;, &#x27;cold_user_hit_at_1&#x27;, &#x27;prediction_genres&#x27;]])</pre></details>
+<div class="table-wrap"><table class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>partition</th>
+      <th>positive_reviews</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>train</td>
+      <td>455515</td>
+    </tr>
+    <tr>
+      <td>validation</td>
+      <td>97611</td>
+    </tr>
+    <tr>
+      <td>test</td>
+      <td>97611</td>
+    </tr>
+  </tbody>
+</table></div>
+<pre>event_time_min_utc 2010-11-19T17:15:28+00:00
+validation_start_utc 2025-08-13T22:25:32+00:00
+test_start_utc 2025-08-24T11:03:06+00:00
+event_time_max_utc 2025-09-06T14:37:00+00:00
+</pre>
+<div class="table-wrap"><table class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>model</th>
+      <th>alpha</th>
+      <th>all_user_hit_at_1</th>
+      <th>warm_user_hit_at_1</th>
+      <th>cold_user_hit_at_1</th>
+      <th>prediction_genres</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>global_mode</td>
+      <td>0</td>
+      <td>0.571286</td>
+      <td>0.610399</td>
+      <td>0.566128</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <td>personal_mode</td>
+      <td>0</td>
+      <td>0.575538</td>
+      <td>0.646897</td>
+      <td>0.566128</td>
+      <td>9</td>
+    </tr>
+    <tr>
+      <td>smoothed_alpha_1</td>
+      <td>1</td>
+      <td>0.575538</td>
+      <td>0.646897</td>
+      <td>0.566128</td>
+      <td>9</td>
+    </tr>
+    <tr>
+      <td>smoothed_alpha_5</td>
+      <td>5</td>
+      <td>0.572592</td>
+      <td>0.621610</td>
+      <td>0.566128</td>
+      <td>7</td>
+    </tr>
+    <tr>
+      <td>smoothed_alpha_20</td>
+      <td>20</td>
+      <td>0.571541</td>
+      <td>0.612593</td>
+      <td>0.566128</td>
+      <td>5</td>
+    </tr>
+    <tr>
+      <td>smoothed_alpha_100</td>
+      <td>100</td>
+      <td>0.571298</td>
+      <td>0.610502</td>
+      <td>0.566128</td>
+      <td>3</td>
+    </tr>
+  </tbody>
+</table></div>
+<p>Personal mode and alpha=1 tied on validation; the stated tie rule selects personal
+mode. Larger prior strengths reduced validation performance. Thus the data supports
+the simpler member of the initial model family. The global fallback is still used
+for users with no history.</p>
+<details><summary>Code cell 6</summary><pre>test = pd.read_csv(OUT / &#x27;test_metrics.csv&#x27;)
+table(test[[&#x27;model&#x27;, &#x27;all_user_hit_at_1&#x27;, &#x27;warm_user_hit_at_1&#x27;, &#x27;cold_user_hit_at_1&#x27;, &#x27;review_hit_at_1&#x27;, &#x27;prediction_genres&#x27;]])
+row = test.iloc[0]
+print(f&quot;Test users: {int(row.all_users):,}; warm: {int(row.warm_users):,}; cold: {int(row.cold_users):,}&quot;)
+print(&#x27;Global mode:&#x27;, summary[&#x27;evaluation_global_mode&#x27;])
+lift = summary[&#x27;test_lift&#x27;]
+print(f&quot;Paired user-level lift: {100 * lift[&#x27;mean_lift&#x27;]:.3f} percentage points&quot;)
+print(f&quot;95% bootstrap interval: [{100 * lift[&#x27;ci_95_low&#x27;]:.3f}, {100 * lift[&#x27;ci_95_high&#x27;]:.3f}] percentage points&quot;)
+print(f&quot;Bootstrap: {lift[&#x27;samples&#x27;]} resamples, seed {lift[&#x27;seed&#x27;]}&quot;)</pre></details>
+<div class="table-wrap"><table class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>model</th>
+      <th>all_user_hit_at_1</th>
+      <th>warm_user_hit_at_1</th>
+      <th>cold_user_hit_at_1</th>
+      <th>review_hit_at_1</th>
+      <th>prediction_genres</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>global_mode</td>
+      <td>0.572344</td>
+      <td>0.593036</td>
+      <td>0.568712</td>
+      <td>0.578808</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <td>personal_mode</td>
+      <td>0.581294</td>
+      <td>0.652995</td>
+      <td>0.568712</td>
+      <td>0.589042</td>
+      <td>10</td>
+    </tr>
+  </tbody>
+</table></div>
+<pre>Test users: 84,155; warm: 12,563; cold: 71,592
+Global mode: Indie
+Paired user-level lift: 0.895 percentage points
+95% bootstrap interval: [0.779, 1.008] percentage points
+Bootstrap: 1000 resamples, seed 2026
+</pre>
+<p>Most test users are cold, so the overall improvement is modest while warm-user
+improvement is larger. The interval resamples users with their paired model
+outcomes, preserving within-user dependence; it does not account for dependence
+between users reviewing the same game or uncertainty under a different time period.</p>
+<h3>Artifact verification and inference</h3>
+<p>Check chronological isolation, unique pairs, full recommendation coverage, and
+predictions reproduced from the saved evaluation model. The separate deployment
+model is refit on all data only after scoring and is never used for test metrics.</p>
+<details><summary>Code cell 7</summary><pre>split = pd.read_csv(OUT / &#x27;split_interactions.csv.gz&#x27;, dtype={&#x27;author_steamid&#x27;: &#x27;string&#x27;, &#x27;recommendationid&#x27;: &#x27;string&#x27;})
+assert not split.duplicated([&#x27;author_steamid&#x27;, &#x27;appid&#x27;]).any()
+assert not split.recommendationid.duplicated().any()
+train = split[split.split.eq(&#x27;train&#x27;)]
+val = split[split.split.eq(&#x27;validation&#x27;)]
+holdout = split[split.split.eq(&#x27;test&#x27;)]
+assert train.event_time.max() &lt; val.event_time.min() &lt;= val.event_time.max() &lt; holdout.event_time.min()
+saved = pd.read_csv(OUT / &#x27;test_predictions.csv.gz&#x27;, dtype={&#x27;author_steamid&#x27;: &#x27;string&#x27;, &#x27;recommendationid&#x27;: &#x27;string&#x27;})
+model = GenreRecommender.load(OUT / &#x27;evaluation_model.npz&#x27;)
+reproduced = model.predict(saved.author_steamid.drop_duplicates())
+check = saved.merge(reproduced, on=&#x27;author_steamid&#x27;, suffixes=(&#x27;_saved&#x27;, &#x27;_loaded&#x27;))
+assert check.recommended_genre_saved.eq(check.recommended_genre_loaded).all()
+assert np.isclose(saved.groupby(&#x27;author_steamid&#x27;).hit.mean().mean(), test.iloc[1].all_user_hit_at_1)
+recs = pd.read_csv(OUT / &#x27;user_recommendations.csv.gz&#x27;, dtype={&#x27;author_steamid&#x27;: &#x27;string&#x27;})
+assert len(recs) == summary[&#x27;audit&#x27;][&#x27;raw_users&#x27;]
+assert recs.author_steamid.is_unique and recs.recommended_genre.notna().all()
+print(&#x27;All artifact checks passed.&#x27;)
+print(f&quot;Final recommendations: {len(recs):,}; no positive history: {int(recs.history_count.eq(0).sum()):,}&quot;)
+table(recs.recommended_genre.value_counts().rename_axis(&#x27;genre&#x27;).rename(&#x27;recommended_users&#x27;).reset_index())
+deployment = GenreRecommender.load(OUT / &#x27;recommendation_model.npz&#x27;)
+table(deployment.predict([&#x27;new_user&#x27;]))</pre></details>
+<pre>All artifact checks passed.
+Final recommendations: 701,884; no positive history: 232,248
+</pre>
+<div class="table-wrap"><table class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>genre</th>
+      <th>recommended_users</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Indie</td>
+      <td>547601</td>
+    </tr>
+    <tr>
+      <td>Action</td>
+      <td>72067</td>
+    </tr>
+    <tr>
+      <td>Adventure</td>
+      <td>26650</td>
+    </tr>
+    <tr>
+      <td>Simulation</td>
+      <td>17600</td>
+    </tr>
+    <tr>
+      <td>Casual</td>
+      <td>16236</td>
+    </tr>
+    <tr>
+      <td>RPG</td>
+      <td>10119</td>
+    </tr>
+    <tr>
+      <td>Strategy</td>
+      <td>9023</td>
+    </tr>
+    <tr>
+      <td>Racing</td>
+      <td>1274</td>
+    </tr>
+    <tr>
+      <td>Sports</td>
+      <td>1245</td>
+    </tr>
+    <tr>
+      <td>Massively Multiplayer</td>
+      <td>69</td>
+    </tr>
+  </tbody>
+</table></div>
+<div class="table-wrap"><table class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>author_steamid</th>
+      <th>recommended_genre</th>
+      <th>history_count</th>
+      <th>score</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>new_user</td>
+      <td>Indie</td>
+      <td>0</td>
+      <td>0.688854</td>
+    </tr>
+  </tbody>
+</table></div>
+<h2>5. Findings, limitations and discussion for the meetup</h2>
+<ul>
+<li>Use personal genre mode with global Indie fallback as the current selected model.
+It is best among the tested configurations; factorization and learned classifiers
+have not been compared.</li>
+<li>Discuss whether Indie belongs in the prediction vocabulary and whether to predict
+a single favorite genre or retain the current multi-label future-review proxy.</li>
+<li>Cold start is the main coverage limitation. Optional preference onboarding or
+additional historical user data could help; current lifetime ownership/playtime
+aggregates cannot safely be treated as past features.</li>
+<li>Positive-only reviews are an explicit feedback proxy. Missing or negative reviews
+do not establish dislike of every genre. The sample may be biased by which games
+and users were collected.</li>
+<li>Chronological evaluation has no future interactions in fitted profiles, but
+snapshot genres and unavailable edit histories prevent a fully historical replay.</li>
+<li>For later experiments, consider historical-text features, recency weights,
+collaborative filtering, and an Indie-excluded target. Reserve a fresh final
+holdout before further tuning against these observed test results.</li>
+</ul>
+<h3>Related-work starting point and assignment status</h3>
+<p><a href="https://developers.google.com/machine-learning/recommendation/content-based/basics">Google's content-based filtering overview</a>
+motivates combining item attributes with past preferences; its
+<a href="https://developers.google.com/machine-learning/recommendation/content-based/summary">advantages and limitations discussion</a>
+explains the dependence on item representation and existing interests. Our count
+model is a deliberately simple genre-level implementation. These sources do not
+provide a directly comparable result on this custom dataset/split.</p>
+<p>The assignment PDF asks for a readable notebook exported as HTML, predictive
+task, EDA, modeling, evaluation, related work, and a roughly 20-minute presentation.
+This report supports the first four sections for the meetup. The final group work
+still needs verified dataset provenance, a substantive research comparison,
+the recorded presentation and video URL, and subsequent peer grading. No video
+or submission has been fabricated.</p></body></html>
