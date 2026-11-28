@@ -1,0 +1,202 @@
+{
+  "task_version": "nine-gameplay-genres-v2",
+  "audit": {
+    "application_types": {
+      "game": 150279,
+      "dlc": 53792,
+      "demo": 23521,
+      "music": 8713,
+      "video": 692
+    },
+    "raw_genre_links": 587515,
+    "indie_tagged_games_retained": 96731,
+    "indie_tagged_games_without_gameplay_genre": 4476,
+    "gameplay_genres": [
+      "Action",
+      "Adventure",
+      "Casual",
+      "Massively Multiplayer",
+      "RPG",
+      "Racing",
+      "Simulation",
+      "Sports",
+      "Strategy"
+    ],
+    "normalized_game_genre_links": 279544,
+    "games_with_usable_genres": 136259,
+    "raw_reviews": 1048148,
+    "raw_users": 701884,
+    "raw_user_review_quantiles": {
+      "0.0": 1.0,
+      "0.5": 1.0,
+      "0.75": 1.0,
+      "0.9": 2.0,
+      "0.95": 3.0,
+      "0.99": 8.0,
+      "1.0": 2392.0
+    },
+    "invalid_required_fields_removed": 0,
+    "invalid_or_inconsistent_dates_removed": 0,
+    "edited_reviews": 142383,
+    "duplicate_review_ids_removed": 0,
+    "duplicate_user_game_pairs_removed": 8,
+    "unmatched_application_reviews_removed": 0,
+    "non_game_reviews_removed": 182366,
+    "missing_usable_genre_reviews_removed": 35034,
+    "negative_reviews_excluded": 198881,
+    "clean_positive_reviews": 631859,
+    "clean_positive_users": 459048,
+    "clean_reviewed_games": 70808
+  },
+  "genres": [
+    "Action",
+    "Adventure",
+    "Casual",
+    "Massively Multiplayer",
+    "RPG",
+    "Racing",
+    "Simulation",
+    "Sports",
+    "Strategy"
+  ],
+  "selected_model": "ensemble",
+  "selected_spec": {
+    "family": "ensemble",
+    "members": [
+      {
+        "family": "baseline",
+        "config": {
+          "kind": "user"
+        }
+      },
+      {
+        "family": "mf",
+        "configs": [
+          {
+            "kind": "mf",
+            "dim": 8,
+            "lr": 0.003,
+            "l2": 0.0001,
+            "seed": 2026,
+            "max_epochs": 12
+          },
+          {
+            "kind": "mf",
+            "dim": 8,
+            "lr": 0.003,
+            "l2": 0.0001,
+            "seed": 2027,
+            "max_epochs": 12
+          },
+          {
+            "kind": "mf",
+            "dim": 8,
+            "lr": 0.003,
+            "l2": 0.0001,
+            "seed": 2028,
+            "max_epochs": 12
+          }
+        ],
+        "epochs": [
+          11,
+          12,
+          12
+        ]
+      }
+    ],
+    "weights": [
+      0.75,
+      0.25
+    ]
+  },
+  "split_counts": {
+    "train": 442301,
+    "validation": 94779,
+    "test": 94779
+  },
+  "validation_start_utc": "2025-08-14T07:50:18+00:00",
+  "test_start_utc": "2025-08-24T14:08:49+00:00",
+  "event_time_min_utc": "2010-11-19T17:15:28+00:00",
+  "event_time_max_utc": "2025-09-06T14:37:00+00:00",
+  "evaluation_global_mode": "Action",
+  "test_lift": {
+    "lift": 0.01800997368991375,
+    "ci_low": 0.01665018611818255,
+    "ci_high": 0.019410232142132038,
+    "samples": 1000,
+    "seed": 2026
+  },
+  "recommendation_users": 701884,
+  "recommendation_cold_users": 242836,
+  "source_code_sha256": "0cdb14be27ff10f439810232416bd7059820414e8370b46a81c52d4c5b798db9",
+  "clean_event_sha256": "b25ffb67e8d88977aac85ecb9eceafd1ef24f8cdd82672237c05c3d6b136a31a",
+  "versions": {
+    "python": "3.12.10",
+    "numpy": "2.5.5",
+    "pandas": "3.1.1",
+    "torch": "2.15.0"
+  },
+  "wall_seconds": 61.545620874967426,
+  "config": {
+    "seeds": [
+      2026,
+      2027,
+      2028
+    ],
+    "max_epochs": 12,
+    "logistic_l2": [
+      0.0001,
+      0.001
+    ],
+    "factor_dimensions": [
+      2,
+      4,
+      8
+    ],
+    "learning_rate": 0.003,
+    "factor_l2": 0.0001,
+    "recent_windows_days": [
+      30,
+      90,
+      180
+    ],
+    "half_lives_days": [
+      30,
+      90,
+      180
+    ],
+    "markov_prior_strengths": [
+      0.1,
+      1.0,
+      10.0
+    ],
+    "ensemble_weights": [
+      0.25,
+      0.5,
+      0.75
+    ],
+    "bootstrap_samples": 1000,
+    "factor_refinements": [
+      {
+        "lr": 0.001,
+        "l2": 0.0001
+      },
+      {
+        "lr": 0.003,
+        "l2": 0.001
+      }
+    ],
+    "development_fold_quantiles": [
+      [
+        0.5,
+        0.6
+      ],
+      [
+        0.6,
+        0.7
+      ]
+    ]
+  },
+  "evaluation_status": "Exploratory temporal holdout: overlapping events were inspected in v1; not an untouched confirmatory test.",
+  "development_fold_status": "Earlier temporal diagnostics with settings selected on the later validation window; not independent nested cross-validation."
+}

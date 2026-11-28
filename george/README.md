@@ -1,130 +1,238 @@
-# George — Steam genre recommendation prototype
+# George — Steam genre recommendation experiments
 
-Independent preparation for the next meetup: data audit/cleanup, global-mode baseline,
-model selection, chronological holdout evaluation, and one recommendation per user.
-Read `workbook.html` for the executed analysis or open `analysis.ipynb` in Jupyter.
-All code and generated files stay in this folder; source CSVs are read-only.
+Current task: recommend **one of nine gameplay genres** from a user's available
+positive-review history. Multiple genres on a future positively reviewed game are
+valid targets. There is no arbitrary primary-genre priority list.
 
-## Model decision, made before implementation
+Start with **[workbook.html](workbook.html)** for the executed analysis, figures,
+comparison tables and limitations, or open **[analysis.ipynb](analysis.ipynb)**.
+Current results live in `outputs_v2/`. The old `outputs/` directory preserves the
+historical ten-genre prototype and is **not** used by the current experiment.
 
-The raw export has 1,048,148 reviews from 701,884 users; 75% of users have no more
-than one review. Only 81,427 users have two or more positive reviews before cleaning.
-The appropriate first model is a **content-based genre profile with shrinkage toward
-global popularity**. It uses the genres of positively reviewed games as user features.
-It is cheap, explainable, and can use one past interaction; unknown users get a global
-fallback. This is a reasoned starting choice, not proof of universal optimality.
+## Findings from this run
 
-| Approach | Decision |
-| --- | --- |
-| Global mode | Required baseline; also a candidate in model selection. |
-| Personal genre mode | Simple personalized comparison; fragile with little history. |
-| Smoothed genre profile | Preferred initial family; tune prior strength on validation. |
-| Matrix factorization / user-neighbor CF | Future comparison; sparse user histories and cold users limit useful learned user factors or neighbors. Not empirically ruled out. |
-| Review text classifier | Does not directly solve this task if it reads the target review, which is unavailable when recommending. Historical text is a possible later feature. |
-| Neural recommender | No established benefit here to justify initial complexity. Not benchmarked. |
+| Model | User-averaged test Hit@1 |
+|---|---:|
+| Global mode (Action) | 47.9293% |
+| Recent popularity | 48.4412% |
+| User mode | 49.7292% |
+| Recency profile | 49.6537% |
+| Logistic | 49.5064% |
+| MF-BPR | 49.6942% |
+| FMC-BPR | 49.3803% |
+| FPMC-BPR | 49.6429% |
+| Validation-selected ensemble | 49.7303% |
 
-For user u and genre g, `score = (count(u,g) + alpha * global_rate(g)) / (n(u) + alpha)`.
-Counts use distinct positive user–game interactions. Each game contributes one vote to
-each distinct canonical genre. These are smoothed multi-label membership rates, not a
-probability distribution summing to one, nor calibrated probabilities of enjoyment.
-Predict the largest score. Break ties by global frequency then alphabetically.
-The global mode is the most frequent genre across positive **training interactions**,
-not the most common genre in the game catalog and not a mode computed from the holdout.
+Validation selected a **75% user-mode / 25% MF rank ensemble**. The MF component
+combines seeds 2026/2027/2028, eight factors, learning rate 0.003, L2 0.0001 and
+validation-selected epochs 11/12/12. Other baselines and full metrics are in the report.
 
-## Run
+The selected ensemble improves over global mode by **1.801 percentage points**
+(paired user-bootstrap 95% interval: **1.665–1.941 points**). Its gain over user mode
+is only **0.0011 points**, with an interval spanning zero (**−0.0026 to 0.0052 points**).
+There is no convincing evidence that its extra complexity is useful relative to
+plain user mode. Saved recommendations follow the validation winner; user mode is
+the practical simpler alternative. Do not select a different model by inspecting test.
 
-Python 3.10+ with NumPy and pandas (already available in the development environment):
+**These are exploratory temporal holdout results.** Overlapping test events were
+inspected in v1. Changing labels does not create an untouched confirmatory test.
+The prior 58.13% result included Indie and is not directly comparable.
+
+## Reproduce
+
+Python 3.10+; this run used Python 3.12.10 on CPU. A local virtual environment has
+already been installed in `george/.venv`.
 
 ```sh
-python3 -m pip install -r george/requirements.txt
-python3 george/pipeline.py
-python3 -m unittest discover -s george -p 'test_*.py' -v
-python3 george/build_report.py
+# From the repository root, on a fresh setup:
+python3 -m venv george/.venv
+george/.venv/bin/python -m pip install -r george/requirements.txt
+
+# Tests → cleanup/train/select/refit → diagnostics → artifact checks → notebook/HTML:
+george/.venv/bin/python george/run_all.py
 ```
 
-Paths resolve relative to the script, so running from other directories also works.
-Override inputs/output with `--data-dir PATH --output-dir PATH` on `pipeline.py`.
-The report builder reads the default `george/outputs` directory. No GPU, network,
-scikit-learn, Jupyter installation, or original ZIP extraction is needed to run the analysis.
-The report builder executes notebook cells and exports their actual outputs using a
-small standard-library exporter; the resulting notebook is also Jupyter-compatible.
+`requirements-lock.txt` records exact packages from the executed environment;
+`requirements.txt` contains portable supported ranges. No GPU is required. Once
+dependencies are installed, training and reporting need no network. Original CSVs
+remain read-only and all work is confined to `george`.
+
+Individual steps:
+
+```sh
+george/.venv/bin/python george/experiments.py
+george/.venv/bin/python george/diagnostics.py
+george/.venv/bin/python george/verify.py
+george/.venv/bin/python george/build_report.py
+george/.venv/bin/python -m unittest discover -s george -p 'test_*.py' -v
+```
+
+The experiment CLI accepts `--data-dir`, `--output-dir` and `--config`.
+Diagnostics accepts `--output-dir`; report and full verification use the default
+`outputs_v2/`. `pipeline.py` also runs the default current experiment for compatibility.
+Model checkpoints are cached by code/data/config/partition hash. Repeated runs may
+reuse fits; timings are local observations and include cache effects, not benchmarks.
+
+## Data contract and genre omissions
+
+- Approved genres: Action, Adventure, Casual, Massively Multiplayer, RPG, Racing,
+  Simulation, Sports, Strategy. All nine remain, including less frequent genres.
+- `genres.py` explicitly maps translated source IDs to canonical genres. Unknown
+  IDs fail instead of being silently discarded. Text translation is unnecessary
+  because review text is not used.
+- Remove Indie, Early Access, Free to Play and other non-gameplay labels. **An
+  Indie + Action game remains as Action**. A game with no surviving label is excluded
+  from training/evaluation, not interpreted as a negative preference.
+- 96,731 Indie-tagged games retain gameplay labels; 4,476 Indie-tagged games have
+  no approved label. The latter count includes any other excluded labels they have.
+- Validate string IDs, votes and timestamps; reject dates before 2000, updates before
+  creation, or review updates after the row's extraction timestamp. Deduplicate review
+  IDs and user–game pairs, keeping the latest available state. Keep `type == game`,
+  mapped labels and positive votes. The audit records sequential removal counts.
+- Final modeling data: **631,859 positive reviews, 459,048 users and 70,808 games**.
+  Original identifiable users still receive recommendations: **701,884 total**,
+  including **242,836** with no retained positive history.
+- No separate user table or full library is present. Dataset provenance, sampling
+  and licensing are not established by the supplied manifest and require confirmation.
 
 ## Evaluation contract
 
-- Task: recommend one genre that appears among the genres of a user's future positive
-  game review. This is a proxy for preference, not a directly observed favorite genre.
-- Global chronological train/validation/test partitions target 70%/15%/15% of cleaned
-  positive interactions; tied timestamps stay together. No user–game pair crosses splits.
-- Event time is `max(timestamp_created, timestamp_updated)` because the export contains
-  final review states, not edit histories. This predicts later available positive review
-  states, not necessarily first purchases or first-time reviews.
-- Compare global mode, personal mode, and alpha in `{1, 5, 20, 100}` on validation.
-  Select highest user-averaged Hit@1; exact ties favor the earlier, simpler candidate.
-- Refit the selected configuration and baseline on train + validation, then evaluate
-  once on test with frozen profiles. Warm and cold refer to positive history in that fit.
-- Hit@1 is 1 if the single recommendation belongs to the target game's genre set.
-  Average within each user, then across users, so prolific reviewers do not dominate.
-  Also report review-weighted Hit@1, warm/cold scores, and predicted genre coverage.
-- A seeded paired bootstrap over users gives a descriptive 95% interval for test lift.
-  It does not account for game-level dependence or temporal distribution shift.
-- Only after evaluation, refit on all cleaned positive reviews and recommend to every
-  identifiable user in the raw reviews, including negative-only users via fallback.
-  Do not use that final refit model to reproduce holdout scores.
+1. Global chronological train/validation/test split: **442,301 / 94,779 / 94,779**
+   records. Timestamp ties remain together; user–game pairs never cross splits.
+2. Event time is `max(timestamp_created, timestamp_updated)`, reflecting when the
+   stored final vote could be available. Validation starts **2025-08-14 07:50:18 UTC**;
+   test starts **2025-08-24 14:08:49 UTC**. Metadata is still a current snapshot.
+3. Main evaluation freezes all histories at each cutoff. Validation selects settings,
+   checkpoints, seed-model combinations and ensemble weights. Test is not used for
+   any of these decisions. Refit train + validation with fixed selected epoch counts.
+4. Primary metric: average genre Hit@1 within each user, then across users. Also report
+   review-weighted Hit@1, user-averaged NDCG@3, per-genre support/precision/recall,
+   genre coverage, and cold/1–2/3–4/5+ history cohorts. Cohorts use fitting history only.
+5. A target game's entire approved genre set is relevant. Uniform random expected
+   Hit@1 is its label count divided by nine, not automatically 1/9.
+6. Paired bootstrap resamples users. It does not capture game-level dependence,
+   model-selection uncertainty or temporal distribution shift.
+7. Only after evaluation, refit the selected model on all retained positives for the
+   exported full-population recommendations. Never score holdout with this final model.
 
-## Outputs
+## Models and important implementation choices
 
-Small audit/results files are under `outputs/`: `summary.json`, validation/test metrics,
-genre mapping, training genre frequencies, and user-history distribution. Larger,
-reproducible artifacts are locally present but Git-ignored:
+`experiment_config.json` records the staged search. Thirteen reported families/
+ablations include random, global mode, recent popularity, user mode, repeat-last,
+recency profile, fractional profile, Markov-1, logistic, MF, FMC, FPMC and ensemble.
 
-- `split_interactions.csv.gz`: cleaned positive records and explicit split membership.
-- `game_genres.csv.gz`: normalized, unique game–genre pairs.
-- `test_predictions.csv.gz`: auditable per-review test predictions and hits.
-- `user_recommendations.csv.gz`: one row per user, selected genre, history count, score,
-  and the full-data global-baseline genre. Keep Steam IDs as strings when reading.
-- `evaluation_model.npz`: selected model fit on train + validation.
-- `recommendation_model.npz`: final full-data model for inference.
+**Profiles:** each positive game contributes to every distinct genre. Fractional
+weighting is a separate ablation. Recency is measured in days with half-lives 30/90/180,
+not an undefined per-review decay. Recent popularity uses 30/90/180-day windows.
+All tie breaks use training popularity then alphabetical genre order.
+
+**Logistic:** nine-output PyTorch linear model with `BCEWithLogitsLoss`. Historical
+features include normalized long-term and decayed profiles, last genre set, recent
+global rates, log history length and log time since the last review. Three internal
+historical windows produce training examples with frozen prefix features. Target
+reviews never enter their own features. Feature scaling is fixed; no test-fitted scaler.
+
+**Markov-1:** fractional source-basket transitions and global-prior smoothing with
+alpha 0.1/1/10. Simultaneous reviews form a basket; no fabricated within-timestamp order.
+
+**MF/FMC/FPMC:** nine-genre adaptations, using dimensions 2/4/8. MF captures taste;
+FMC captures transitions; FPMC combines both. BPR is a pairwise objective, not an
+architecture or literal SVD. With nine genres, enumerate all present/absent event
+genre pairs instead of sampling. A genre absent from this game is not treated as a
+lifelong dislike, and previously liked genres remain recommendation candidates.
+
+User factors require at least two fitting reviews. MF/FPMC use a profile fallback
+otherwise; no users are removed from evaluation. FMC has shared transitions. All
+learned models use global fallback when no positive history exists. These are explicit
+hybrid fallbacks, so do not describe the results as pure factor predictions for everyone.
+
+**Optimization:** Adam; explicit L2; per-user-balanced training examples; batch size
+up to 8192; 12-epoch cap; patience 3 on validation Hit@1. Search seeds start at 2026,
+then the best setting in each learned family is repeated at 2027 and 2028. Each seed
+has its own validation-selected epoch; average its genre ranks for the family score.
+Seed variation is descriptive, not an independent significance test. Several fits
+reach the cap, so the search does not establish convergence or a universal best model.
+
+**Ensemble:** take the two strongest eligible validation families and tune weights
+0.25/0.5/0.75. Blend normalized ranks, not incompatible BPR logits and probabilities.
+This sacrifices score magnitude and adds inference/storage cost.
+
+## Diagnostics and tradeoffs
+
+- **Normalization ablation:** full versus fractional genre votes under identical targets.
+- **History cohorts:** evaluate 3+ and 5+ history through cohort tables instead of
+  dropping the large majority of users. At test cutoff, 69,788 of 81,944 users are cold.
+- **Earlier time windows:** fixed selected settings evaluated on 50–60% and 60–70%
+  chronological windows. Settings came from later validation, so these are retrospective
+  diagnostics, not independently tuned nested cross-validation.
+- **Review-edit sensitivity:** baseline comparison on unedited reviews, same calendar
+  cutoffs. Update order is not play order; this tests one source of distortion.
+- **Sequential replay:** all families predict before revealing an event and update
+  user history afterward. Same-time reviews are revealed together. Weights, global
+  popularity and transitions stay fixed. This separate protocol does not select models;
+  cohort status refers to the original cutoff. Selected-ensemble replay Hit@1 is 50.25%.
+- **Genre-specific scores:** distinguish “recommended this genre correctly” from
+  “hit any valid genre on games carrying this genre.” Rare genres have limited support.
+- **Costs:** report runtime, parameter and snapshot sizes. Shared preprocessing and
+  cached fits make per-model times unsuitable as strict algorithmic benchmarks.
+- **Deferred:** Markov-2, game-level Jaccard, deep networks, inverse-frequency weighting
+  and other target definitions. These were optional future extensions, not silently
+  substituted for the implemented core comparisons.
+
+The data cannot establish users' true favorite genres. Broad labels, review selection,
+positive-only evidence, current metadata and incomplete user histories all constrain
+the interpretation. Target review text and current lifetime ownership/playtime totals
+are excluded as predictive features. New data or an uninspected period is needed for
+a genuinely untouched final test.
+
+## Files and inference
+
+| File | Role |
+|---|---|
+| `genres.py`, `pipeline.py` | Canonical labels, auditable cleanup, temporal splitting |
+| `features.py` | Frozen histories, strict-time baskets and snapshot examples |
+| `models.py` | Baselines, PyTorch learners, rank ensembles and saved inference |
+| `metrics.py` | Multi-label ranking metrics, cohorts and paired bootstrap |
+| `experiments.py`, `experiment_config.json` | Search, validation selection, refits and predictions |
+| `diagnostics.py` | Sequential replay and additional paired comparisons |
+| `verify.py`, `test_*.py` | Full-artifact verification and 21 unit/regression tests |
+| `build_report.py` | Executed notebook, figures and standard nbconvert HTML export |
+| `run_all.py` | One-command reproduction |
+| `model.py` | Original simple baseline retained for compatibility/tests |
+
+`outputs_v2/` contains the mapping/omission audit, summary, all search and seed results,
+training curves, test metrics/cohorts/per-genre results, diagnostics, plots and verification.
+Large generated `.gz` and `.npz` artifacts are local and Git-ignored:
+
+- `split_interactions.csv.gz` and `game_genres.csv.gz` — auditable cleaned inputs.
+- `test_predictions.csv.gz` — selected-model per-event holdout predictions and hits.
+- `user_recommendations.csv.gz` — one genre per identifiable original user.
+- `evaluation_model.npz` — score snapshot fitted on train + validation.
+- `recommendation_model.npz` — full-data deployment score snapshot.
+- `checkpoints/*.npz` — actual learned parameter arrays; matching JSON records configs,
+  epochs, curves and training times. Cached files may include previous code versions.
 
 ```python
 import sys
 sys.path.insert(0, 'george')
-from model import GenreRecommender
-model = GenreRecommender.load('george/outputs/recommendation_model.npz')
+from models import SnapshotRecommender
+model = SnapshotRecommender.load('george/outputs_v2/recommendation_model.npz')
 print(model.predict(['76561198085405844', 'new_user']))
 ```
 
-## Limitations and meetup decisions
+NPZ loading uses `allow_pickle=False`. Unknown IDs receive global fallback. A snapshot
+serves known fitted histories; rerun the pipeline to incorporate new interactions.
+Returned scores are ranking values, **not calibrated probabilities of enjoyment**.
 
-There is no separate user table or complete ownership/play log: users are review authors.
-Current lifetime playtime/ownership counts, review text, and target game features are
-not used as predictive inputs. Game genres are used as historical profile attributes
-and evaluation labels. Metadata is a current snapshot, so historical taxonomy changes
-cannot be reconstructed. Keep this limitation even with a chronological split.
+## Sources and assignment status
 
-The mapping normalizes translated genres; status, business-model, software/video and
-content descriptors are excluded. `Indie` is deliberately retained as a Steam catalog
-genre, although it is not a gameplay mechanic. Review the mapping and consider an
-Indie-excluded sensitivity analysis as a separate future experiment. Multi-genre games
-make Hit@1 easier than single-label classification. Negative reviews are not proof of
-disliking every genre on a game, so they are excluded from preference counts.
+Read against the local `158 _ 258 2026 Assignment 2.pdf`. The report supports task
+definition, EDA, modeling, evaluation and related-work discussion. Final group synthesis,
+verified data provenance, the recorded presentation and actual video URL, and later
+peer grading remain outside this implementation.
 
-The local export contains a manifest but does not document its upstream sampling or
-collection method. Do not call it a representative sample of all Steam users. Its
-directory says 2025 while manifest file metadata is later; use measured event dates.
-Confirm the original dataset URL, licensing, sampling and collection protocol with the
-team. Further tuning after seeing these test results requires a fresh final holdout.
+- [BPR, Rendle et al. (2009)](https://proceedings.mlr.press/r7/rendle09a.html)
+- [FPMC, Rendle et al. (2010)](https://archives.iw3c2.org/www2010/pub/pdfs/RendleFreudenthaler2010-FPMC.pdf)
+- [PyTorch multi-label loss](https://docs.pytorch.org/docs/stable/generated/torch.nn.BCEWithLogitsLoss.html)
 
-## Assignment alignment and sources
-
-Read against `158 _ 258 2026 Assignment 2.pdf`: predictive task/validity, EDA/processing,
-model formulation, and baseline evaluation are covered for the meetup. The final
-assignment also requires substantive related work, a roughly 20-minute recorded
-presentation and `video_url.txt`, and later peer grading. Those are not completed by
-this prototype. The exported `workbook.html` is an initial notebook report, not a claim
-that the full group submission is finished.
-
-Method background: [Google's content-based filtering explanation](https://developers.google.com/machine-learning/recommendation/content-based/basics)
-and [advantages/limitations](https://developers.google.com/machine-learning/recommendation/content-based/summary).
-These motivate using item attributes and historical preferences, but do not establish
-our model as best. No published benchmark score is directly comparable to this custom
-genre vocabulary, snapshot, and temporal protocol.
+These motivate methods, not a directly comparable score for this custom Steam task.

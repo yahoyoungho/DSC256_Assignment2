@@ -1,0 +1,155 @@
+id,name,canonical_genre,exclusion_reason
+1,Aventură,Adventure,
+2,Многопользовательские игры,Massively Multiplayer,
+3,Nezávislé,,"production category (Indie), not gameplay genre"
+4,Strategie,Strategy,
+5,Strategy,Strategy,
+6,Acțiune,Action,
+7,インディー,,"production category (Indie), not gameplay genre"
+8,アクション,Action,
+9,Acesso Antecipado,,business model or release status
+10,Simulaatio,Simulation,
+11,Simulation,Simulation,
+12,Sexual Content,,content descriptor
+13,Azione,Action,
+14,Aksiyon,Action,
+15,Racing,Racing,
+16,Massively Multiplayer,Massively Multiplayer,
+17,Simuladores,Simulation,
+18,Eventyr,Adventure,
+19,MMO,Massively Multiplayer,
+20,Szimuláció,Simulation,
+21,Бесплатные,,business model or release status
+22,Akcja,Action,
+23,Episodic,,"software, education or video category"
+24,Bağımsız Yapımcı,,"production category (Indie), not gameplay genre"
+25,Multijogador Massivo,Massively Multiplayer,
+26,Petualangan,Adventure,
+27,Web Publishing,,"software, education or video category"
+28,Gratis at spille,,business model or release status
+29,Basit Eğlence,Casual,
+30,Stratégie,Strategy,
+31,Indie,,"production category (Indie), not gameplay genre"
+32,Casual,Casual,
+33,Documentary,,"software, education or video category"
+34,Kasual,Casual,
+35,Rekreacyjne,Casual,
+36,Gratuitos para Jogar,,business model or release status
+37,Simulação,Simulation,
+38,Bildung,,"software, education or video category"
+39,Abenteuer,Adventure,
+40,Rollespill,RPG,
+41,Симулятори,Simulation,
+42,Avventura,Adventure,
+43,Пригоди,Adventure,
+44,Free To Play,,business model or release status
+45,Animation & Modeling,,"software, education or video category"
+46,Estratégia,Strategy,
+47,Design & Illustration,,"software, education or video category"
+48,獨立製作,,"production category (Indie), not gameplay genre"
+49,Nudity,,content descriptor
+50,Software Training,,"software, education or video category"
+51,Rollenspiel,RPG,
+52,休閒,Casual,
+53,Photo Editing,,"software, education or video category"
+54,Aventura,Adventure,
+55,Masivně multiplayerové,Massively Multiplayer,
+56,ストラテジー,Strategy,
+57,Macera,Adventure,
+58,Devasa Çok Oyunculu,Massively Multiplayer,
+59,Multigiocatore di massa,Massively Multiplayer,
+60,Sport,Sports,
+61,Aventure,Adventure,
+62,Sports,Sports,
+63,Гонки,Racing,
+64,Ação,Action,
+65,Rol,RPG,
+66,Corrida,Racing,
+67,Simulatoare,Simulation,
+68,Audio Production,,"software, education or video category"
+69,Рольові ігри,RPG,
+70,Stratégia,Strategy,
+71,Симуляторы,Simulation,
+72,独立,,"production category (Indie), not gameplay genre"
+73,Corse,Racing,
+74,Rennspiele,Racing,
+75,免费开玩,,business model or release status
+76,Indépendant,,"production category (Indie), not gameplay genre"
+77,Esportes,Sports,
+78,Strategické,Strategy,
+79,Gore,,content descriptor
+80,动作,Action,
+81,Accounting,,"software, education or video category"
+82,Tutorial,,"software, education or video category"
+83,Video Production,,"software, education or video category"
+84,策略,Strategy,
+85,Äventyr,Adventure,
+86,Spieleentwicklung,,"software, education or video category"
+87,模拟,Simulation,
+88,Strateji,Strategy,
+89,Spor,Sports,
+90,Неангажиращи,Casual,
+91,Simulatie,Simulation,
+92,カジュアル,Casual,
+93,Free to Play,,business model or release status
+94,冒險,Adventure,
+95,Gratis te spelen,,business model or release status
+96,Інді,,"production category (Indie), not gameplay genre"
+97,体育,Sports,
+98,Web-Publishing,,"software, education or video category"
+99,Simülasyon,Simulation,
+100,RYO,RPG,
+101,アドベンチャー,Adventure,
+102,Strategi,Strategy,
+103,Симулатори,Simulation,
+104,Sportowe,Sports,
+105,Стратегии,Strategy,
+106,Violent,,content descriptor
+107,Early Access,,business model or release status
+108,Przygodowe,Adventure,
+109,Simulering,Simulation,
+110,Gelegenheitsspiele,Casual,
+111,Sportovní,Sports,
+112,Стратегії,Strategy,
+113,Adventure,Adventure,
+114,Simulasi,Simulation,
+115,Независими,,"production category (Indie), not gameplay genre"
+116,Utilities,,"software, education or video category"
+117,Gratis att spela,,business model or release status
+118,Strategia,Strategy,
+119,Ролевые игры,RPG,
+120,Acción,Action,
+121,Перегони,Racing,
+122,Action,Action,
+123,Game Development,,"software, education or video category"
+124,角色扮演,RPG,
+125,Экшены,Action,
+126,Niezależne,,"production category (Indie), not gameplay genre"
+127,Passatempo,Casual,
+128,Приключенческие игры,Adventure,
+129,Deportes,Sports,
+130,Education,,"software, education or video category"
+131,Movie,,"software, education or video category"
+132,Dobrodružné,Adventure,
+133,Бойовики,Action,
+134,360 Video,,"software, education or video category"
+135,Fritid,Casual,
+136,Aksi,Action,
+137,Simulátory,Simulation,
+138,Simuleringar,Simulation,
+139,Estrategia,Strategy,
+140,Спорт,Sports,
+141,Simulationen,Simulation,
+142,動作,Action,
+143,Simulazione,Simulation,
+144,RPG,RPG,
+145,Actie,Action,
+146,Инди,,"production category (Indie), not gameplay genre"
+147,Symulacje,Simulation,
+148,Multijugador masivo,Massively Multiplayer,
+149,竞速,Racing,
+150,冒险,Adventure,
+151,Short,,"software, education or video category"
+154,إثارة,Action,
+160,Akció,Action,
+167,مجانية,,business model or release status

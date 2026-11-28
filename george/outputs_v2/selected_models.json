@@ -1,0 +1,241 @@
+{
+  "winner": "ensemble",
+  "specs": {
+    "uniform_random": {
+      "family": "baseline",
+      "config": {
+        "kind": "random"
+      }
+    },
+    "global_mode": {
+      "family": "baseline",
+      "config": {
+        "kind": "global"
+      }
+    },
+    "recent_popularity": {
+      "family": "baseline",
+      "config": {
+        "kind": "recent",
+        "days": 30
+      }
+    },
+    "user_mode": {
+      "family": "baseline",
+      "config": {
+        "kind": "user"
+      }
+    },
+    "repeat_last": {
+      "family": "baseline",
+      "config": {
+        "kind": "last"
+      }
+    },
+    "recency_profile": {
+      "family": "baseline",
+      "config": {
+        "kind": "recency",
+        "half_life": 180
+      }
+    },
+    "fractional_profile": {
+      "family": "baseline",
+      "config": {
+        "kind": "fractional"
+      }
+    },
+    "markov1": {
+      "family": "baseline",
+      "config": {
+        "kind": "markov1",
+        "alpha": 10.0
+      }
+    },
+    "logistic": {
+      "family": "logistic",
+      "configs": [
+        {
+          "kind": "logistic",
+          "dim": 4,
+          "lr": 0.003,
+          "l2": 0.0001,
+          "seed": 2026,
+          "max_epochs": 12
+        },
+        {
+          "kind": "logistic",
+          "dim": 4,
+          "lr": 0.003,
+          "l2": 0.0001,
+          "seed": 2027,
+          "max_epochs": 12
+        },
+        {
+          "kind": "logistic",
+          "dim": 4,
+          "lr": 0.003,
+          "l2": 0.0001,
+          "seed": 2028,
+          "max_epochs": 12
+        }
+      ],
+      "epochs": [
+        1,
+        1,
+        1
+      ]
+    },
+    "mf": {
+      "family": "mf",
+      "configs": [
+        {
+          "kind": "mf",
+          "dim": 8,
+          "lr": 0.003,
+          "l2": 0.0001,
+          "seed": 2026,
+          "max_epochs": 12
+        },
+        {
+          "kind": "mf",
+          "dim": 8,
+          "lr": 0.003,
+          "l2": 0.0001,
+          "seed": 2027,
+          "max_epochs": 12
+        },
+        {
+          "kind": "mf",
+          "dim": 8,
+          "lr": 0.003,
+          "l2": 0.0001,
+          "seed": 2028,
+          "max_epochs": 12
+        }
+      ],
+      "epochs": [
+        11,
+        12,
+        12
+      ]
+    },
+    "fmc": {
+      "family": "fmc",
+      "configs": [
+        {
+          "kind": "fmc",
+          "dim": 8,
+          "lr": 0.003,
+          "l2": 0.001,
+          "seed": 2026,
+          "max_epochs": 12
+        },
+        {
+          "kind": "fmc",
+          "dim": 8,
+          "lr": 0.003,
+          "l2": 0.001,
+          "seed": 2027,
+          "max_epochs": 12
+        },
+        {
+          "kind": "fmc",
+          "dim": 8,
+          "lr": 0.003,
+          "l2": 0.001,
+          "seed": 2028,
+          "max_epochs": 12
+        }
+      ],
+      "epochs": [
+        12,
+        3,
+        3
+      ]
+    },
+    "fpmc": {
+      "family": "fpmc",
+      "configs": [
+        {
+          "kind": "fpmc",
+          "dim": 8,
+          "lr": 0.003,
+          "l2": 0.001,
+          "seed": 2026,
+          "max_epochs": 12
+        },
+        {
+          "kind": "fpmc",
+          "dim": 8,
+          "lr": 0.003,
+          "l2": 0.001,
+          "seed": 2027,
+          "max_epochs": 12
+        },
+        {
+          "kind": "fpmc",
+          "dim": 8,
+          "lr": 0.003,
+          "l2": 0.001,
+          "seed": 2028,
+          "max_epochs": 12
+        }
+      ],
+      "epochs": [
+        8,
+        12,
+        7
+      ]
+    },
+    "ensemble": {
+      "family": "ensemble",
+      "members": [
+        {
+          "family": "baseline",
+          "config": {
+            "kind": "user"
+          }
+        },
+        {
+          "family": "mf",
+          "configs": [
+            {
+              "kind": "mf",
+              "dim": 8,
+              "lr": 0.003,
+              "l2": 0.0001,
+              "seed": 2026,
+              "max_epochs": 12
+            },
+            {
+              "kind": "mf",
+              "dim": 8,
+              "lr": 0.003,
+              "l2": 0.0001,
+              "seed": 2027,
+              "max_epochs": 12
+            },
+            {
+              "kind": "mf",
+              "dim": 8,
+              "lr": 0.003,
+              "l2": 0.0001,
+              "seed": 2028,
+              "max_epochs": 12
+            }
+          ],
+          "epochs": [
+            11,
+            12,
+            12
+          ]
+        }
+      ],
+      "weights": [
+        0.75,
+        0.25
+      ]
+    }
+  }
+}

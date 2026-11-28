@@ -1,0 +1,19 @@
+{
+  "status": "passed",
+  "checks": [
+    "nine-genre vocabulary and unique catalog links",
+    "unique review IDs and user-game pairs",
+    "strict chronological splits and timestamp ties",
+    "cleanup row conservation",
+    "one valid recommendation per original user",
+    "evaluation and deployment histories fit only their respective partitions",
+    "saved-model predictions reproduce all exported recommendations",
+    "selected model metrics recomputed from saved scores",
+    "training-only global prior",
+    "unknown-user fallback",
+    "source hash matches executed results",
+    "diagnostic frozen scores reproduce main experiment"
+  ],
+  "users": 701884,
+  "test_reviews": 94779
+}

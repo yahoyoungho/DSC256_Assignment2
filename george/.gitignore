@@ -1,3 +1,9 @@
 __pycache__/
 outputs/*.gz
 outputs/*.npz
+outputs_v2/**/*.gz
+outputs_v2/**/*.npz
+outputs_v2/**/*.pt
+outputs_v2/checkpoints/
+.venv/
+.mplconfig/

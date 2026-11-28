@@ -1,0 +1,15 @@
+{
+  "seeds": [2026, 2027, 2028],
+  "max_epochs": 12,
+  "logistic_l2": [0.0001, 0.001],
+  "factor_dimensions": [2, 4, 8],
+  "learning_rate": 0.003,
+  "factor_l2": 0.0001,
+  "recent_windows_days": [30, 90, 180],
+  "half_lives_days": [30, 90, 180],
+  "markov_prior_strengths": [0.1, 1.0, 10.0],
+  "ensemble_weights": [0.25, 0.5, 0.75],
+  "bootstrap_samples": 1000,
+  "factor_refinements": [{"lr": 0.001, "l2": 0.0001}, {"lr": 0.003, "l2": 0.001}],
+  "development_fold_quantiles": [[0.5, 0.6], [0.6, 0.7]]
+}

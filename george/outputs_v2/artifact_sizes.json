@@ -1,0 +1,6 @@
+{
+  "evaluation_model_bytes": 5599748,
+  "recommendation_model_bytes": 5866787,
+  "checkpoint_cache_bytes": 150279111,
+  "notes": "Replay uses fixed weights and priors, updates only per-user history, and is not used for selection. Cohorts remain defined at the original cutoff."
+}
